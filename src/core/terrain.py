@@ -32,13 +32,19 @@ class Terrain:
     """
     
     def __init__(self, elevation: np.ndarray, cell_size: float = 10.0,
-                 x_origin: float = 0.0, y_origin: float = 0.0):
+                 x_origin: float = 0.0, y_origin: float = 0.0,
+                 is_geographic: bool = False, cell_size_deg: float = 0.0,
+                 mean_lat: float = 0.0):
         """Initialize terrain from elevation array."""
         self.elevation = np.nan_to_num(elevation.astype(np.float64), nan=0.0)
         self.original_elevation = self.elevation.copy()
-        self.cell_size = cell_size
-        self.x_origin = x_origin
-        self.y_origin = y_origin
+        self.cell_size = cell_size          # metres
+        self.x_origin = x_origin           # lon / easting of left edge
+        self.y_origin = y_origin           # lat / northing of bottom edge
+        # Georeferencing helpers
+        self.is_geographic = is_geographic  # True if CRS is lat/lon degrees
+        self.cell_size_deg = cell_size_deg  # original degree cell size (if geographic)
+        self.mean_lat = mean_lat            # mean latitude for lon→metre scale
         
         self.rows, self.cols = self.elevation.shape
         self._compute_slope_aspect()
@@ -179,18 +185,15 @@ class Terrain:
                 y_origin = src.bounds.bottom
                 
                 # Detect geographic coordinates (degrees) vs projected (meters)
-                # If cell_size < 0.01, it's likely in degrees (lat/lon)
                 is_geographic = cell_size < 0.01
+                cell_size_deg = 0.0
+                mean_lat = 0.0
                 
                 if is_geographic:
-                    # Convert degrees to approximate meters
-                    # At equator: 1 degree ≈ 111,320 meters
-                    # Adjust for latitude using mean latitude from bounds
+                    cell_size_deg = cell_size
                     mean_lat = (src.bounds.top + src.bounds.bottom) / 2
                     meters_per_degree_lat = 111320.0
                     meters_per_degree_lon = 111320.0 * np.cos(np.radians(mean_lat))
-                    
-                    # Use average of lat/lon scale
                     cell_size_meters = cell_size * (meters_per_degree_lat + meters_per_degree_lon) / 2
                     
                     print(f"Loaded GeoTIFF: {data.shape[0]}x{data.shape[1]} cells")
@@ -199,14 +202,16 @@ class Terrain:
                     print(f"  Mean latitude: {mean_lat:.4f}°")
                     print(f"  Converted cell size: {cell_size_meters:.2f} m")
                     print(f"Elevation range: {np.nanmin(data):.1f} to {np.nanmax(data):.1f} m")
-                    
                     cell_size = cell_size_meters
                 else:
                     print(f"Loaded GeoTIFF: {data.shape[0]}x{data.shape[1]} cells")
                     print(f"Cell size: {cell_size}m")
                     print(f"Elevation range: {np.nanmin(data):.1f} to {np.nanmax(data):.1f} m")
                 
-                return cls(data, cell_size, x_origin, y_origin)
+                return cls(data, cell_size, x_origin, y_origin,
+                           is_geographic=is_geographic,
+                           cell_size_deg=cell_size_deg,
+                           mean_lat=mean_lat)
                 
         except ImportError:
             raise ImportError("rasterio required for GeoTIFF. Install: pip install rasterio")

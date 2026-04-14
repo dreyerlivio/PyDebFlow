@@ -57,6 +57,7 @@ jobs:
 
       # ADDED: xvfb-run automatically handles the DISPLAY variable and headless server
       - name: Run ALL tests (library, API, scripts, integration)
+        shell: bash
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
@@ -67,6 +68,7 @@ jobs:
           fi
           
       - name: Verify package imports
+        shell: bash
         env:
           QT_QPA_PLATFORM: offscreen
         run: |

@@ -84,6 +84,21 @@ PyDebFlow implements a **two-phase (solid + fluid) shallow water model** with ad
 
 ---
 
+## 🆕 What's New in v0.2.0
+
+| Feature | Description |
+|---------|-------------|
+| **👑 Crown Zone** | Interactive release zone with lat/lon coordinate entry, polygon drawing, and single-click Remove |
+| **📏 Cross-Section Profile** | RAMMS-style elevation + flow profile along any transect; x-axis at 0.1 m resolution; zoom/pan + save |
+| **📈 Hydrograph** | Multi-point flow height, velocity & discharge over time on the same graph; up to 8 concurrent monitor points |
+| **📊 Statistics Tab** | Descriptive, spatial, temporal, phase, and hypothesis-test (Shapiro-Wilk, KS) output; exportable as CSV/TXT |
+| **🎚️ 3D Time Slider** | Drag to any simulation timestep in the interactive PyVista viewer |
+| **🔍 Zoom / Pan** | Scroll-wheel zoom on terrain maps; matplotlib NavigationToolbar on profile & hydrograph |
+| **💾 Save Plots** | One-click export of profile and hydrograph as PNG / PDF / SVG |
+| **📐 Polygon Crown** | Draw arbitrary polygons on the DEM via GUI or define via `--release-polygon` in the CLI |
+
+---
+
 ## ✨ Features
 
 ### 🧮 Numerical Solver
@@ -124,9 +139,14 @@ PyDebFlow implements a **two-phase (solid + fluid) shallow water model** with ad
 ### 🖥️ User Interface
 
 - **Modern PyQt6 GUI** - Dark-themed professional desktop application
+- **👑 Crown Zone Tab** - Interactive terrain map with lat/lon coordinate entry, pont and polygon marking, and Remove button
+- **📏 Cross-Section Profile** - Draw transects and view elevation + flow profile at 0.1 m resolution
+- **📈 Hydrograph** - Multi-point discharge and flow-height time series, all on one configurable graph
+- **📊 Statistics** - Full descriptive, spatial, temporal, and phase statistics with hypothesis tests; export to CSV/TXT
+- **🎚️ 3D Time Slider** - Scrub through every simulation frame in the PyVista viewer
+- **🔍 Zoom/Pan/Save** - Zoom & pan on all plots; one-click PNG/PDF/SVG export
 - **Parameter Presets** - Quick setup for debris/snow/lahar scenarios
 - **Background Simulation** - Non-blocking threaded execution
-- **Interactive Controls** - Load DEM, configure, run, visualize, export
 
 ### 📦 Distribution
 
@@ -310,6 +330,7 @@ python run_simulation.py [OPTIONS]
 | `--release-col J` | Release zone center column | Auto |
 | `--release-radius N` | Radius in grid cells | 10 |
 | `--release-height M` | Initial height in meters | 5.0 |
+| `--release-polygon VERTS` | Comma-separated vertices `r1,c1,r2,c2,...` for polygon zone | — |
 
 #### Visualization Options
 
@@ -617,7 +638,9 @@ PyDebFlow/
 │   │   └── plot_utils.py       # Matplotlib plotting
 │   │
 │   └── gui/                # Graphical interface
-│       └── main_window.py      # PyQt6 main window
+│       ├── main_window.py      # PyQt6 main window
+│       ├── release_zone_widget.py  # CrownWidget (interactive release zone)
+│       └── analysis_widgets.py     # CrossSectionWidget, HydrographWidget, StatisticsWidget
 │
 ├── scripts/                # CLI helper scripts
 │   ├── install.sh/.bat         # Installation scripts

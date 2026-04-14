@@ -290,11 +290,11 @@ class MainWindow(QMainWindow):
         
         self.viz_tabs.addTab(info_widget, "ℹ️ Info")
         
-        # Release Zone tab  
-        from src.gui.release_zone_widget import ReleaseZoneWidget
-        self.release_zone_widget = ReleaseZoneWidget()
+        # Crown (Release Zone) tab
+        from src.gui.release_zone_widget import CrownWidget
+        self.release_zone_widget = CrownWidget()
         self.release_zone_widget.release_zone_changed.connect(self._on_release_zone_changed)
-        self.viz_tabs.addTab(self.release_zone_widget, "🎯 Release Zone")
+        self.viz_tabs.addTab(self.release_zone_widget, "👑 Crown")
         
         # Log tab
         self.log_text = QTextEdit()
@@ -312,13 +312,17 @@ class MainWindow(QMainWindow):
         self.viz_tabs.addTab(results_widget, "📊 Results")
         
         # Cross-Section Profile tab
-        from src.gui.analysis_widgets import CrossSectionWidget, HydrographWidget
+        from src.gui.analysis_widgets import CrossSectionWidget, HydrographWidget, StatisticsWidget
         self.cross_section_widget = CrossSectionWidget()
         self.viz_tabs.addTab(self.cross_section_widget, "📏 Profile")
         
         # Hydrograph tab
         self.hydrograph_widget = HydrographWidget()
         self.viz_tabs.addTab(self.hydrograph_widget, "📈 Hydrograph")
+        
+        # Statistics tab
+        self.statistics_widget = StatisticsWidget()
+        self.viz_tabs.addTab(self.statistics_widget, "📊 Statistics")
         
         layout.addWidget(self.viz_tabs)
         
@@ -737,6 +741,7 @@ class MainWindow(QMainWindow):
             # Feed data to analysis widgets
             self.cross_section_widget.set_data(self.terrain, outputs)
             self.hydrograph_widget.set_data(self.terrain, outputs)
+            self.statistics_widget.set_data(self.terrain, outputs)
             
             self.viz_tabs.setCurrentIndex(2)  # Results tab
     

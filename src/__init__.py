@@ -1,6 +1,6 @@
 """
-PyDebFlow - Advanced Two-Phase Mass Flow Simulation Software
-=============================================================
+PyDebFlow v0.2.0 - Advanced Two-Phase Mass Flow Simulation Software
+===================================================================
 
 An open-source simulation tool for debris flows, avalanches, and lahars.
 Inspired by r.avaflow and RAMMS.
@@ -16,7 +16,8 @@ Basic Usage
 For more information, see: https://github.com/ankitdutta428/PyDebFlow
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
+
 __author__ = "Ankit Dutta"
 __email__ = "ankitdutta428@gmail.com"
 __license__ = "AGPL-3.0"

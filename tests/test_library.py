@@ -26,7 +26,7 @@ class TestLibraryImports:
         """Test that version info is accessible."""
         import src as pydebflow
         assert hasattr(pydebflow, '__version__')
-        assert pydebflow.__version__ == "0.1.0"
+        assert pydebflow.__version__ == "0.2.0"
     
     def test_author_info(self):
         """Test that author info is accessible."""
@@ -38,7 +38,7 @@ class TestLibraryImports:
     def test_get_version_function(self):
         """Test the get_version() helper function."""
         import src as pydebflow
-        assert pydebflow.get_version() == "0.1.0"
+        assert pydebflow.get_version() == "0.2.0"
 
 
 class TestCoreImports:

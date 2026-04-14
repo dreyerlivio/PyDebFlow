@@ -860,5 +860,5 @@ For commercial licensing inquiries, please contact the maintainers.
 ---
 
 <p align="center">
-  <sub>PyDebFlow v0.1.0 • Last updated: January 2026</sub>
+  <sub>PyDebFlow v0.2.0 • Last updated: April 2026</sub>
 </p>

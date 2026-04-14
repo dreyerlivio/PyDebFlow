@@ -25,16 +25,29 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # ADDED: System dependencies for Qt/GUI required by Ubuntu
+      # ADDED: Comprehensive suite of headless Qt6/EGL/XCB dependencies
       - name: Install system dependencies (Ubuntu)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
-            libgl1 libglx-mesa0 libegl1 libegl-mesa0 \
-            libxcb-xinerama0 libxcb-icccm4 libxcb-image0 \
-            libxcb-render-util0 libxkbcommon-x11-0 \
-            x11-utils xvfb
+            libegl1 \
+            libgl1 \
+            libopengl0 \
+            libglx-mesa0 \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-xfixes0 \
+            libxcb-xinerama0 \
+            libxkbcommon-x11-0 \
+            libxkbcommon0 \
+            x11-utils \
+            xvfb
 
       - name: Install dependencies
         run: |
@@ -42,20 +55,26 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov
 
-      # ADDED: Environment variables for headless Qt testing
+      # ADDED: xvfb-run automatically handles the DISPLAY variable and headless server
       - name: Run ALL tests (library, API, scripts, integration)
         env:
           QT_QPA_PLATFORM: offscreen
-          DISPLAY: ":99"
         run: |
-          python -m pytest tests/ -v --tb=short
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            xvfb-run -a python -m pytest tests/ -v --tb=short
+          else
+            python -m pytest tests/ -v --tb=short
+          fi
           
       - name: Verify package imports
         env:
           QT_QPA_PLATFORM: offscreen
-          DISPLAY: ":99"
         run: |
-          python -c "from src.core.flow_model import TwoPhaseFlowModel; print('Import OK')"
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            xvfb-run -a python -c "from src.core.flow_model import TwoPhaseFlowModel; print('Import OK')"
+          else
+            python -c "from src.core.flow_model import TwoPhaseFlowModel; print('Import OK')"
+          fi
 
   # =========================================================================
   # Job 2: Build the package (only if ALL tests pass)

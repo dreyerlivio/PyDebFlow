@@ -610,7 +610,14 @@ class NOCTVDSolver:
         
         dt = self.config.cfl_number * min(self.dx, self.dy) / max_wave_speed
         
-        return np.clip(dt, self.config.min_timestep, self.config.max_timestep)
+        return self._clip_timestep(dt)
+
+    def _clip_timestep(self, dt: float) -> float:
+        if dt < self.config.min_timestep:
+            return float(self.config.min_timestep)
+        if dt > self.config.max_timestep:
+            return float(self.config.max_timestep)
+        return float(dt)
 
     def _cuda_grid(self, rows: int, cols: int) -> Tuple[int, int]:
         block = self.config.cuda_block_size
@@ -622,8 +629,14 @@ class NOCTVDSolver:
 
         rows, cols = shape
         if self._cuda_slope_x is None or self._cuda_slope_shape != shape:
-            self._cuda_slope_x = cuda.to_device(self.terrain.slope_x.astype(np.float64, copy=False))
-            self._cuda_slope_y = cuda.to_device(self.terrain.slope_y.astype(np.float64, copy=False))
+            slope_x_host = self.terrain.slope_x
+            slope_y_host = self.terrain.slope_y
+            if slope_x_host.dtype != np.float64:
+                slope_x_host = slope_x_host.astype(np.float64)
+            if slope_y_host.dtype != np.float64:
+                slope_y_host = slope_y_host.astype(np.float64)
+            self._cuda_slope_x = cuda.to_device(slope_x_host)
+            self._cuda_slope_y = cuda.to_device(slope_y_host)
             self._cuda_slope_shape = shape
 
         slope_x = self._cuda_slope_x
@@ -689,16 +702,13 @@ class NOCTVDSolver:
             self.g, buffers.max_speed
         )
 
-        max_speed = float(_cuda_max_reduce(buffers.max_speed.ravel()))
+        max_speed_flat = buffers.max_speed.reshape((buffers.max_speed.size,))
+        max_speed = float(_cuda_max_reduce(max_speed_flat))
         if max_speed < 1e-10:
             return self.config.max_timestep
 
         dt = self.config.cfl_number * min(self.dx, self.dy) / max_speed
-        if dt < self.config.min_timestep:
-            return float(self.config.min_timestep)
-        if dt > self.config.max_timestep:
-            return float(self.config.max_timestep)
-        return float(dt)
+        return self._clip_timestep(dt)
 
     def _cuda_step(self, buffers: _CudaBuffers, dt: float) -> None:
         rows, cols = buffers.shape

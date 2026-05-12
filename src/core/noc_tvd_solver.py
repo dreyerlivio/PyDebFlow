@@ -21,6 +21,10 @@ except Exception:
     cuda = None
     _CUDA_AVAILABLE = False
 
+EPSILON = 1e-10
+FLUID_VELOCITY_FACTOR = 0.9
+CUDA_REFLECT_THREADS = 256
+
 from .flow_model import FlowState, FlowParameters, TwoPhaseFlowModel
 from .terrain import Terrain
 
@@ -75,7 +79,7 @@ def vanleer(a: float, b: float) -> float:
     """Van Leer flux limiter."""
     if a * b <= 0:
         return 0.0
-    return 2 * a * b / (a + b + 1e-10)
+    return 2 * a * b / (a + b + EPSILON)
 
 
 @njit(cache=True, parallel=True)
@@ -135,7 +139,7 @@ def compute_fluxes_x(h_solid: np.ndarray, h_fluid: np.ndarray,
             flux_hu_f_R = hf_R * uf_R**2 + 0.5 * g * hf_R**2
             
             # HLL flux
-            if s_R - s_L > 1e-10:
+            if s_R - s_L > EPSILON:
                 denom = s_R - s_L
                 F_hs[i, j] = (s_R * flux_hs_L - s_L * flux_hs_R + s_L * s_R * (hs_R - hs_L)) / denom
                 F_hf[i, j] = (s_R * flux_hf_L - s_L * flux_hf_R + s_L * s_R * (hf_R - hf_L)) / denom
@@ -201,7 +205,7 @@ def compute_fluxes_y(h_solid: np.ndarray, h_fluid: np.ndarray,
             flux_hv_f_L = hf_L * vf_L**2 + 0.5 * g * hf_L**2
             flux_hv_f_R = hf_R * vf_R**2 + 0.5 * g * hf_R**2
             
-            if s_R - s_L > 1e-10:
+            if s_R - s_L > EPSILON:
                 denom = s_R - s_L
                 G_hs[i, j] = (s_R * flux_hs_L - s_L * flux_hs_R + s_L * s_R * (hs_R - hs_L)) / denom
                 G_hf[i, j] = (s_R * flux_hf_L - s_L * flux_hf_R + s_L * s_R * (hf_R - hf_L)) / denom
@@ -282,8 +286,8 @@ if cuda is not None:
 
             h_L = hs_L + hf_L
             h_R = hs_R + hf_R
-            c_L = math.sqrt(g * h_L) if h_L > 0 else 0.0
-            c_R = math.sqrt(g * h_R) if h_R > 0 else 0.0
+            c_L = math.sqrt(g * h_L) if h_L > EPSILON else 0.0
+            c_R = math.sqrt(g * h_R) if h_R > EPSILON else 0.0
 
             s_L = min(us_L - c_L, us_R - c_R, 0.0)
             s_R = max(us_L + c_L, us_R + c_R, 0.0)
@@ -299,7 +303,7 @@ if cuda is not None:
             flux_hu_f_R = hf_R * uf_R * uf_R + 0.5 * g * hf_R * hf_R
 
             denom = s_R - s_L
-            if denom > 1e-10:
+            if denom > EPSILON:
                 F_hs[i, j] = (s_R * flux_hs_L - s_L * flux_hs_R + s_L * s_R * (hs_R - hs_L)) / denom
                 F_hf[i, j] = (s_R * flux_hf_L - s_L * flux_hf_R + s_L * s_R * (hf_R - hf_L)) / denom
                 F_hu_s[i, j] = (s_R * flux_hu_s_L - s_L * flux_hu_s_R + s_L * s_R * (hs_R * us_R - hs_L * us_L)) / denom
@@ -350,8 +354,8 @@ if cuda is not None:
 
             h_L = hs_L + hf_L
             h_R = hs_R + hf_R
-            c_L = math.sqrt(g * h_L) if h_L > 0 else 0.0
-            c_R = math.sqrt(g * h_R) if h_R > 0 else 0.0
+            c_L = math.sqrt(g * h_L) if h_L > EPSILON else 0.0
+            c_R = math.sqrt(g * h_R) if h_R > EPSILON else 0.0
 
             s_L = min(vs_L - c_L, vs_R - c_R, 0.0)
             s_R = max(vs_L + c_L, vs_R + c_R, 0.0)
@@ -367,7 +371,7 @@ if cuda is not None:
             flux_hv_f_R = hf_R * vf_R * vf_R + 0.5 * g * hf_R * hf_R
 
             denom = s_R - s_L
-            if denom > 1e-10:
+            if denom > EPSILON:
                 G_hs[i, j] = (s_R * flux_hs_L - s_L * flux_hs_R + s_L * s_R * (hs_R - hs_L)) / denom
                 G_hf[i, j] = (s_R * flux_hf_L - s_L * flux_hf_R + s_L * s_R * (hf_R - hf_L)) / denom
                 G_hv_s[i, j] = (s_R * flux_hv_s_L - s_L * flux_hv_s_R + s_L * s_R * (hs_R * vs_R - hs_L * vs_L)) / denom
@@ -463,7 +467,7 @@ if cuda is not None:
 
             if h_total > height_threshold:
                 speed_s = math.sqrt(u_solid[i, j] * u_solid[i, j] +
-                                    v_solid[i, j] * v_solid[i, j]) + 1e-10
+                                    v_solid[i, j] * v_solid[i, j]) + EPSILON
                 fx_g = g * h_total * slope_x[i, j]
                 fy_g = g * h_total * slope_y[i, j]
 
@@ -503,8 +507,8 @@ if cuda is not None:
             h_fluid[i, j] = hf
             u_solid[i, j] = u
             v_solid[i, j] = v
-            u_fluid[i, j] = 0.9 * u
-            v_fluid[i, j] = 0.9 * v
+            u_fluid[i, j] = FLUID_VELOCITY_FACTOR * u
+            v_fluid[i, j] = FLUID_VELOCITY_FACTOR * v
 
 
     @cuda.jit
@@ -517,7 +521,7 @@ if cuda is not None:
         cols = h_solid.shape[1]
         if i < rows and j < cols:
             h_total = h_solid[i, j] + h_fluid[i, j]
-            c = math.sqrt(g * h_total) if h_total > 0 else 0.0
+            c = math.sqrt(g * h_total) if h_total > EPSILON else 0.0
 
             us = math.fabs(u_solid[i, j])
             vs = math.fabs(v_solid[i, j])
@@ -605,7 +609,7 @@ class NOCTVDSolver:
         
         # Avoid division by zero
         max_wave_speed = max_speed.max()
-        if max_wave_speed < 1e-10:
+        if max_wave_speed < EPSILON:
             return self.config.max_timestep
         
         dt = self.config.cfl_number * min(self.dx, self.dy) / max_wave_speed
@@ -704,7 +708,7 @@ class NOCTVDSolver:
 
         max_speed_flat = buffers.max_speed.reshape((buffers.max_speed.size,))
         max_speed = float(_cuda_max_reduce(max_speed_flat))
-        if max_speed < 1e-10:
+        if max_speed < EPSILON:
             return self.config.max_timestep
 
         dt = self.config.cfl_number * min(self.dx, self.dy) / max_speed
@@ -760,7 +764,7 @@ class NOCTVDSolver:
         )
 
         if self.config.boundary_type == 'reflective':
-            threads = 256
+            threads = CUDA_REFLECT_THREADS
             blocks_rows = math.ceil(rows / threads)
             blocks_cols = math.ceil(cols / threads)
             _cuda_reflect_u[blocks_rows, threads](buffers.u_solid)
@@ -778,7 +782,7 @@ class NOCTVDSolver:
         fy_g = self.g * h_total * self.terrain.slope_y
         
         # Friction (Voellmy-Salm)
-        speed_s = state.speed_solid + 1e-10
+        speed_s = state.speed_solid + EPSILON
         mu = self.model.params.voellmy_mu
         xi = self.model.params.voellmy_xi
         
@@ -799,8 +803,8 @@ class NOCTVDSolver:
         new_state.v_solid = np.where(active, state.v_solid + dt * (fy_g + fy_f), 0)
         
         # Fluid follows solid (simplified)
-        new_state.u_fluid = 0.9 * new_state.u_solid
-        new_state.v_fluid = 0.9 * new_state.v_solid
+        new_state.u_fluid = FLUID_VELOCITY_FACTOR * new_state.u_solid
+        new_state.v_fluid = FLUID_VELOCITY_FACTOR * new_state.v_solid
         
         return new_state
     

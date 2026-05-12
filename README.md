@@ -399,7 +399,7 @@ params = FlowParameters(
 
 # Create model and solver
 model = TwoPhaseFlowModel(params)
-solver = NOCTVDSolver(terrain, model, SolverConfig(use_cuda=True))  # GPU if available
+solver = NOCTVDSolver(terrain, model, SolverConfig(use_cuda=True))  # GPU if available (falls back to CPU)
 
 # Initialize release zone
 state = FlowState.zeros((terrain.rows, terrain.cols))

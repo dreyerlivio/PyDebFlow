@@ -39,7 +39,7 @@ def run_synthetic_test(output_dir: str = "./test_output",
         output_dir: Output directory for results
         t_end: Simulation end time
         visualize: Whether to show plots
-        use_cuda: Whether to use CUDA acceleration if available
+        use_cuda: Whether to use CUDA acceleration if available (falls back to CPU if unavailable)
     """
     print("=" * 70)
     print("PyDebFlow - Synthetic Test Simulation")
@@ -292,7 +292,7 @@ def run_dem_simulation(dem_file: str,
         release_vertices: List of (row, col) tuples for polygon release zone
         animate_3d: Show 3D animation
         export_video: Export animation to MP4
-        use_cuda: Whether to use CUDA acceleration if available
+        use_cuda: Whether to use CUDA acceleration if available (falls back to CPU if unavailable)
     """
     print("=" * 70)
     print("PyDebFlow - DEM Simulation")

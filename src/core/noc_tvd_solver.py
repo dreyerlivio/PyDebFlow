@@ -47,7 +47,7 @@ class SolverConfig:
     # Performance
     use_numba: bool = True  # Use Numba JIT acceleration
     use_cuda: bool = False  # Use Numba CUDA acceleration if available
-    cuda_block_size: Tuple[int, int] = (16, 16)  # CUDA block size (rows, cols)
+    cuda_block_size: Tuple[int, int] = (16, 16)  # CUDA block size (rows, cols); tune per GPU
 
 
 @njit(cache=True)
@@ -572,6 +572,9 @@ class NOCTVDSolver:
         self._cuda_available = _CUDA_AVAILABLE and cuda is not None
         self._use_cuda = False
         self._cuda_buffers: Optional[_CudaBuffers] = None
+        self._cuda_slope_x: Optional[Any] = None
+        self._cuda_slope_y: Optional[Any] = None
+        self._cuda_slope_shape: Optional[Tuple[int, int]] = None
         
         # Pre-compute for efficiency
         self.dx = terrain.cell_size
@@ -618,8 +621,13 @@ class NOCTVDSolver:
             return self._cuda_buffers
 
         rows, cols = shape
-        slope_x = cuda.to_device(self.terrain.slope_x.astype(np.float64, copy=False))
-        slope_y = cuda.to_device(self.terrain.slope_y.astype(np.float64, copy=False))
+        if self._cuda_slope_x is None or self._cuda_slope_shape != shape:
+            self._cuda_slope_x = cuda.to_device(self.terrain.slope_x.astype(np.float64, copy=False))
+            self._cuda_slope_y = cuda.to_device(self.terrain.slope_y.astype(np.float64, copy=False))
+            self._cuda_slope_shape = shape
+
+        slope_x = self._cuda_slope_x
+        slope_y = self._cuda_slope_y
 
         buffers = _CudaBuffers(
             shape=shape,
@@ -686,7 +694,11 @@ class NOCTVDSolver:
             return self.config.max_timestep
 
         dt = self.config.cfl_number * min(self.dx, self.dy) / max_speed
-        return float(np.clip(dt, self.config.min_timestep, self.config.max_timestep))
+        if dt < self.config.min_timestep:
+            return float(self.config.min_timestep)
+        if dt > self.config.max_timestep:
+            return float(self.config.max_timestep)
+        return float(dt)
 
     def _cuda_step(self, buffers: _CudaBuffers, dt: float) -> None:
         rows, cols = buffers.shape

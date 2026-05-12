@@ -17,14 +17,20 @@ import time
 try:
     from numba import cuda
     _CUDA_AVAILABLE = cuda.is_available()
-except Exception:
+    _CUDA_IMPORT_ERROR = None
+except Exception as exc:
     cuda = None
     _CUDA_AVAILABLE = False
+    _CUDA_IMPORT_ERROR = exc
 
 EPSILON = 1e-10
 HEIGHT_EPS = 1e-6
 FLUID_VELOCITY_FACTOR = 0.9
 CUDA_REFLECT_THREADS = 256
+
+
+def _ensure_float64(array: np.ndarray) -> np.ndarray:
+    return array if array.dtype == np.float64 else array.astype(np.float64)
 
 from .flow_model import FlowState, FlowParameters, TwoPhaseFlowModel
 from .terrain import Terrain
@@ -587,7 +593,11 @@ class NOCTVDSolver:
         
         if self.config.use_cuda:
             if not self._cuda_available:
-                warnings.warn("CUDA requested but not available; falling back to CPU.")
+                if cuda is None:
+                    reason = f"numba.cuda import failed: {_CUDA_IMPORT_ERROR}" if _CUDA_IMPORT_ERROR else "numba.cuda unavailable"
+                else:
+                    reason = "no CUDA-capable GPU/driver detected"
+                warnings.warn(f"CUDA requested but not available ({reason}); falling back to CPU.")
             else:
                 self._use_cuda = True
     
@@ -628,18 +638,17 @@ class NOCTVDSolver:
         block = self.config.cuda_block_size
         return (math.ceil(rows / block[0]), math.ceil(cols / block[1]))
 
+    def _cuda_grid_1d(self, count: int, threads: int) -> int:
+        return math.ceil(count / threads)
+
     def _ensure_cuda_buffers(self, shape: Tuple[int, int]) -> _CudaBuffers:
         if self._cuda_buffers is not None and self._cuda_buffers.shape == shape:
             return self._cuda_buffers
 
         rows, cols = shape
         if self._cuda_slope_x is None or self._cuda_slope_shape != shape:
-            slope_x_host = self.terrain.slope_x
-            slope_y_host = self.terrain.slope_y
-            if slope_x_host.dtype != np.float64:
-                slope_x_host = slope_x_host.astype(np.float64)
-            if slope_y_host.dtype != np.float64:
-                slope_y_host = slope_y_host.astype(np.float64)
+            slope_x_host = _ensure_float64(self.terrain.slope_x)
+            slope_y_host = _ensure_float64(self.terrain.slope_y)
             self._cuda_slope_x = cuda.to_device(slope_x_host)
             self._cuda_slope_y = cuda.to_device(slope_y_host)
             self._cuda_slope_shape = shape
@@ -707,7 +716,7 @@ class NOCTVDSolver:
             self.g, buffers.max_speed
         )
 
-        max_speed_flat = buffers.max_speed.reshape((buffers.max_speed.size,))
+        max_speed_flat = buffers.max_speed.ravel()
         max_speed = float(_cuda_max_reduce(max_speed_flat))
         if max_speed < EPSILON:
             return self.config.max_timestep
@@ -766,8 +775,8 @@ class NOCTVDSolver:
 
         if self.config.boundary_type == 'reflective':
             threads = CUDA_REFLECT_THREADS
-            blocks_rows = math.ceil(rows / threads)
-            blocks_cols = math.ceil(cols / threads)
+            blocks_rows = self._cuda_grid_1d(rows, threads)
+            blocks_cols = self._cuda_grid_1d(cols, threads)
             _cuda_reflect_u[blocks_rows, threads](buffers.u_solid)
             _cuda_reflect_v[blocks_cols, threads](buffers.v_solid)
     

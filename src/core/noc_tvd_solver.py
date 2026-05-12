@@ -686,12 +686,12 @@ class NOCTVDSolver:
 
     def _init_cuda_state(self, state: FlowState) -> _CudaBuffers:
         buffers = self._ensure_cuda_buffers(state.h_solid.shape)
-        buffers.h_solid.copy_to_device(state.h_solid)
-        buffers.h_fluid.copy_to_device(state.h_fluid)
-        buffers.u_solid.copy_to_device(state.u_solid)
-        buffers.v_solid.copy_to_device(state.v_solid)
-        buffers.u_fluid.copy_to_device(state.u_fluid)
-        buffers.v_fluid.copy_to_device(state.v_fluid)
+        buffers.h_solid.copy_to_device(_ensure_float64(state.h_solid))
+        buffers.h_fluid.copy_to_device(_ensure_float64(state.h_fluid))
+        buffers.u_solid.copy_to_device(_ensure_float64(state.u_solid))
+        buffers.v_solid.copy_to_device(_ensure_float64(state.v_solid))
+        buffers.u_fluid.copy_to_device(_ensure_float64(state.u_fluid))
+        buffers.v_fluid.copy_to_device(_ensure_float64(state.v_fluid))
         return buffers
 
     def _cuda_state_to_host(self, buffers: _CudaBuffers) -> FlowState:
@@ -703,6 +703,13 @@ class NOCTVDSolver:
             u_fluid=buffers.u_fluid.copy_to_host(),
             v_fluid=buffers.v_fluid.copy_to_host(),
         )
+
+    def release_cuda(self) -> None:
+        """Release cached CUDA buffers and device arrays."""
+        self._cuda_buffers = None
+        self._cuda_slope_x = None
+        self._cuda_slope_y = None
+        self._cuda_slope_shape = None
 
     def _compute_timestep_cuda(self, buffers: _CudaBuffers) -> float:
         rows, cols = buffers.shape
@@ -716,7 +723,7 @@ class NOCTVDSolver:
             self.g, buffers.max_speed
         )
 
-        max_speed_flat = buffers.max_speed.ravel()
+        max_speed_flat = buffers.max_speed.reshape((buffers.max_speed.size,))
         max_speed = float(_cuda_max_reduce(max_speed_flat))
         if max_speed < EPSILON:
             return self.config.max_timestep

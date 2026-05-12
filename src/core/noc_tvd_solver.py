@@ -22,6 +22,7 @@ except Exception:
     _CUDA_AVAILABLE = False
 
 EPSILON = 1e-10
+HEIGHT_EPS = 1e-6
 FLUID_VELOCITY_FACTOR = 0.9
 CUDA_REFLECT_THREADS = 256
 
@@ -401,12 +402,12 @@ if cuda is not None:
             hu_s_new = hu_s - dt_dx * (F_hu_s[i, j + 1] - F_hu_s[i, j])
             hu_f_new = hu_f - dt_dx * (F_hu_f[i, j + 1] - F_hu_f[i, j])
 
-            if h_solid_x[i, j] > 1e-6:
+            if h_solid_x[i, j] > HEIGHT_EPS:
                 u_solid_x[i, j] = hu_s_new / h_solid_x[i, j]
             else:
                 u_solid_x[i, j] = 0.0
 
-            if h_fluid_x[i, j] > 1e-6:
+            if h_fluid_x[i, j] > HEIGHT_EPS:
                 u_fluid_x[i, j] = hu_f_new / h_fluid_x[i, j]
             else:
                 u_fluid_x[i, j] = 0.0
@@ -438,12 +439,12 @@ if cuda is not None:
             u_solid[i, j] = u_solid_x[i, j]
             u_fluid[i, j] = u_fluid_x[i, j]
 
-            if hs_new > 1e-6:
+            if hs_new > HEIGHT_EPS:
                 v_solid[i, j] = hv_s_new / hs_new
             else:
                 v_solid[i, j] = 0.0
 
-            if hf_new > 1e-6:
+            if hf_new > HEIGHT_EPS:
                 v_fluid[i, j] = hv_f_new / hf_new
             else:
                 v_fluid[i, j] = 0.0
@@ -834,9 +835,9 @@ class NOCTVDSolver:
         
         # Recover velocity
         with np.errstate(divide='ignore', invalid='ignore'):
-            new_state.u_solid = np.where(new_state.h_solid > 1e-6, 
+            new_state.u_solid = np.where(new_state.h_solid > HEIGHT_EPS, 
                                           hu_s_new / new_state.h_solid, 0)
-            new_state.u_fluid = np.where(new_state.h_fluid > 1e-6,
+            new_state.u_fluid = np.where(new_state.h_fluid > HEIGHT_EPS,
                                           hu_f_new / new_state.h_fluid, 0)
         
         # Y-sweep
@@ -857,9 +858,9 @@ class NOCTVDSolver:
         hv_f_new = hv_f - dt_dy * (G_hv_f[1:, :] - G_hv_f[:-1, :])
         
         with np.errstate(divide='ignore', invalid='ignore'):
-            new_state.v_solid = np.where(new_state.h_solid > 1e-6,
+            new_state.v_solid = np.where(new_state.h_solid > HEIGHT_EPS,
                                           hv_s_new / new_state.h_solid, 0)
-            new_state.v_fluid = np.where(new_state.h_fluid > 1e-6,
+            new_state.v_fluid = np.where(new_state.h_fluid > HEIGHT_EPS,
                                           hv_f_new / new_state.h_fluid, 0)
         
         # Source terms

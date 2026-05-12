@@ -681,7 +681,7 @@ class NOCTVDSolver:
             self.g, buffers.max_speed
         )
 
-        max_speed = float(_cuda_max_reduce(buffers.max_speed.reshape((buffers.max_speed.size,))))
+        max_speed = float(_cuda_max_reduce(buffers.max_speed.ravel()))
         if max_speed < 1e-10:
             return self.config.max_timestep
 

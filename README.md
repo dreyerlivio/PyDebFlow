@@ -108,6 +108,7 @@ PyDebFlow implements a **two-phase (solid + fluid) shallow water model** with ad
 - **Multiple Flux Limiters** - Minmod, Superbee, Van Leer
 - **Dimensional Splitting** - Efficient 2D computation via x/y sweeps
 - **Numba JIT Acceleration** - Near-C performance with Python simplicity
+- **Optional CUDA Acceleration** - GPU execution via Numba CUDA (`--gpu`)
 
 ### 🔬 Physics Engine
 
@@ -163,6 +164,7 @@ PyDebFlow implements a **two-phase (solid + fluid) shallow water model** with ad
 - **Python 3.10, 3.11, or 3.12** (recommended: 3.12)
 - **pip** package manager
 - **Git** (for cloning)
+- **NVIDIA GPU + CUDA drivers** (optional, for `--gpu` acceleration)
 
 ### Method 1: Install from PyPI (Easiest)
 
@@ -267,6 +269,7 @@ python pydebflow.py simulate --synthetic    # Quick demo
 python pydebflow.py gui                     # Launch GUI
 python pydebflow.py info                    # System info
 python pydebflow.py simulate --dem terrain.tif --time 60 --animate
+python pydebflow.py simulate --synthetic --gpu  # GPU-accelerated demo (if available)
 ```
 
 ### Direct Python Commands
@@ -274,6 +277,7 @@ python pydebflow.py simulate --dem terrain.tif --time 60 --animate
 ```bash
 # Test with synthetic terrain
 python run_simulation.py --synthetic-test
+python run_simulation.py --synthetic-test --gpu --no-viz
 
 # Launch GUI
 python main.py
@@ -321,6 +325,7 @@ python run_simulation.py [OPTIONS]
 | `--dem-file PATH` | Path to DEM file (.tif, .asc) | - |
 | `--t-end SECONDS` | Simulation duration | 30.0 |
 | `--output-dir PATH` | Results output directory | ./output |
+| `--gpu` | Use CUDA acceleration if available | - |
 
 #### Release Zone Configuration
 
@@ -394,7 +399,7 @@ params = FlowParameters(
 
 # Create model and solver
 model = TwoPhaseFlowModel(params)
-solver = NOCTVDSolver(terrain, model)
+solver = NOCTVDSolver(terrain, model, SolverConfig(use_cuda=True))  # GPU if available (falls back to CPU)
 
 # Initialize release zone
 state = FlowState.zeros((terrain.rows, terrain.cols))

@@ -34,7 +34,8 @@ def cmd_simulate(args):
         run_synthetic_test(
             output_dir=args.output,
             t_end=args.time,
-            visualize=not args.no_viz
+            visualize=not args.no_viz,
+            use_cuda=args.gpu
         )
     elif args.dem:
         # Parse polygon vertices if provided
@@ -56,7 +57,8 @@ def cmd_simulate(args):
             release_height=args.release_height,
             release_vertices=release_vertices,
             animate_3d=args.animate and not args.no_viz,
-            export_video=args.video
+            export_video=args.video,
+            use_cuda=args.gpu
         )
     else:
         print("Error: Specify --dem FILE or --synthetic")
@@ -162,6 +164,8 @@ def main():
                             help='Simulation duration in seconds (default: 30)')
     sim_params.add_argument('--output', '-o', type=str, default='./output',
                             help='Output directory (default: ./output)')
+    sim_params.add_argument('--gpu', action='store_true',
+                            help='Use CUDA acceleration if available')
     
     sim_release = sim_parser.add_argument_group('Release Zone')
     sim_release.add_argument('--release-row', type=int, metavar='I',

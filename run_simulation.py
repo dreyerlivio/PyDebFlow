@@ -30,7 +30,8 @@ from src.visualization.plot_utils import FlowVisualizer
 
 def run_synthetic_test(output_dir: str = "./test_output", 
                         t_end: float = 30.0,
-                        visualize: bool = True) -> None:
+                        visualize: bool = True,
+                        use_cuda: bool = False) -> None:
     """
     Run a complete simulation with synthetic terrain.
     
@@ -38,6 +39,7 @@ def run_synthetic_test(output_dir: str = "./test_output",
         output_dir: Output directory for results
         t_end: Simulation end time
         visualize: Whether to show plots
+        use_cuda: Whether to use CUDA acceleration if available (falls back to CPU if unavailable)
     """
     print("=" * 70)
     print("PyDebFlow - Synthetic Test Simulation")
@@ -75,7 +77,8 @@ def run_synthetic_test(output_dir: str = "./test_output",
         cfl_number=0.4,
         max_timestep=0.5,
         flux_limiter="minmod",
-        boundary_type="outflow"
+        boundary_type="outflow",
+        use_cuda=use_cuda
     )
     solver = NOCTVDSolver(terrain, model, solver_config)
     
@@ -274,7 +277,8 @@ def run_dem_simulation(dem_file: str,
                         release_height: float = 5.0,
                         release_vertices: list = None,
                         animate_3d: bool = True,
-                        export_video: bool = False) -> None:
+                        export_video: bool = False,
+                        use_cuda: bool = False) -> None:
     """
     Run simulation on a real DEM file.
     
@@ -288,6 +292,7 @@ def run_dem_simulation(dem_file: str,
         release_vertices: List of (row, col) tuples for polygon release zone
         animate_3d: Show 3D animation
         export_video: Export animation to MP4
+        use_cuda: Whether to use CUDA acceleration if available (falls back to CPU if unavailable)
     """
     print("=" * 70)
     print("PyDebFlow - DEM Simulation")
@@ -311,7 +316,7 @@ def run_dem_simulation(dem_file: str,
     )
     model = TwoPhaseFlowModel(params)
     
-    solver_config = SolverConfig(cfl_number=0.4, max_timestep=0.5)
+    solver_config = SolverConfig(cfl_number=0.4, max_timestep=0.5, use_cuda=use_cuda)
     solver = NOCTVDSolver(terrain, model, solver_config)
     
     # Initialize release
@@ -460,6 +465,8 @@ Examples:
                            help='Simulation end time in seconds (default: 30)')
     sim_group.add_argument('--output-dir', type=str, default='./output',
                            help='Output directory (default: ./output)')
+    sim_group.add_argument('--gpu', action='store_true',
+                           help='Use CUDA acceleration if available')
     
     # Release zone
     release_group = parser.add_argument_group('Release Zone')
@@ -523,13 +530,15 @@ Examples:
             release_height=args.release_height,
             release_vertices=release_vertices,
             animate_3d=args.animate_3d and not args.no_viz,
-            export_video=args.export_video
+            export_video=args.export_video,
+            use_cuda=args.gpu
         )
     elif args.synthetic_test:
         run_synthetic_test(
             output_dir=args.output_dir,
             t_end=args.t_end,
-            visualize=not args.no_viz
+            visualize=not args.no_viz,
+            use_cuda=args.gpu
         )
     elif args.test_all:
         test_all()

@@ -23,6 +23,29 @@ except Exception as exc:
     _CUDA_AVAILABLE = False
     _CUDA_IMPORT_ERROR = exc
 
+if cuda is not None:
+    try:
+        from numba.cuda.cudadrv.error import (
+            CudaAPIError,
+            CudaDriverError,
+            CudaRuntimeError,
+            CudaSupportError,
+            NvvmSupportError,
+        )
+
+        _CUDA_RUNTIME_ERRORS = (
+            CudaAPIError,
+            CudaDriverError,
+            CudaRuntimeError,
+            CudaSupportError,
+            NvvmSupportError,
+            OSError,
+        )
+    except Exception:
+        _CUDA_RUNTIME_ERRORS = (OSError,)
+else:
+    _CUDA_RUNTIME_ERRORS = (OSError,)
+
 EPSILON = 1e-10
 HEIGHT_EPS = 1e-6
 FLUID_VELOCITY_FACTOR = 0.9
@@ -600,6 +623,25 @@ class NOCTVDSolver:
                 warnings.warn(f"CUDA requested but not available ({reason}); falling back to CPU.")
             else:
                 self._use_cuda = True
+                self._ensure_cuda_context()
+
+    def _disable_cuda(self, reason: str, exc: Optional[BaseException] = None) -> None:
+        message = reason
+        if exc is not None:
+            message = f"{reason} ({exc.__class__.__name__}: {exc})"
+        warnings.warn(f"{message}; falling back to CPU.")
+        self.release_cuda()
+        self._use_cuda = False
+
+    def _ensure_cuda_context(self) -> bool:
+        if not self._use_cuda:
+            return False
+        try:
+            cuda.current_context()
+        except _CUDA_RUNTIME_ERRORS as exc:
+            self._disable_cuda("CUDA initialization failed", exc)
+            return False
+        return True
     
     def compute_timestep(self, state: FlowState) -> float:
         """
